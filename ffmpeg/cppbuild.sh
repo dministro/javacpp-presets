@@ -7,12 +7,23 @@ if [[ -z "$PLATFORM" ]]; then
     exit
 fi
 
-DISABLE="--disable-iconv --disable-opencl --disable-sdl2 --disable-bzlib --disable-lzma --disable-linux-perf"
+#--enable-vulkan --enable-cuda-nvcc cuvid
+DISABLE="--disable-iconv --disable-opencl --disable-sdl2 --disable-bzlib --disable-lzma --disable-linux-perf --disable-xlib"
 ENABLE="--enable-shared --enable-version3 --enable-runtime-cpudetect --enable-zlib --enable-libmp3lame --enable-libspeex --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libvo-amrwbenc --enable-openssl --enable-libopenh264 --enable-libvpx --enable-libfreetype --enable-libopus --enable-libxml2 --enable-libsrt"
 
-if [[ "$EXTENSION" == *gpl ]]; then
+if [[ "$EXTENSION" == *"gpl"* ]]; then
     # Enable GPL and nonfree modules
+    echo "Enable GPL and nonfree modules"
     ENABLE="$ENABLE --enable-gpl --enable-nonfree --enable-libx264 --enable-libx265"
+fi
+
+if [[ "$EXTENSION" == *"hwaccel"* ]]; then
+    # Enable hwaccel modules
+	echo "Enable hwaccel modules"
+else
+	# Disable hwaccel modules
+	echo "Disable hwaccel modules"
+	DISABLE="--disable-vaapi"
 fi
 
 # minimal configuration to support MPEG-4 streams with H.264 and AAC as well as Motion JPEG
@@ -41,6 +52,18 @@ NVCODEC_VERSION=11.0.10.0
 XML2=libxml2-2.9.10
 LIBSRT_VERSION=1.4.2
 FFMPEG_VERSION=4.4
+
+LIBDRM_VERSION=2.4.101
+LIBDRM=libdrm-$LIBDRM_VERSION
+LIBPCIACCESS_VERSION=0.16
+LIBPCIACCESS=libpciaccess-$LIBPCIACCESS_VERSION
+XUTIL_MACROS_VERSION=1.19.3
+XUTIL_MACROS=util-macros-$XUTIL_MACROS_VERSION
+LIBVA_VERSION=1.8.1
+LIBVA=libva-$LIBVA_VERSION
+LIBVA_INTEL_DRIVER_VERSION=$LIBVA_VERSION
+LIBVA_INTEL_DRIVER=intel-vaapi-driver-$LIBVA_INTEL_DRIVER_VERSION
+
 download https://download.videolan.org/contrib/nasm/nasm-$NASM_VERSION.tar.gz nasm-$NASM_VERSION.tar.gz
 download http://zlib.net/$ZLIB.tar.gz $ZLIB.tar.gz
 download http://downloads.sourceforge.net/project/lame/lame/3.100/$LAME.tar.gz $LAME.tar.gz
@@ -60,6 +83,14 @@ download http://xmlsoft.org/sources/$XML2.tar.gz $XML2.tar.gz
 download https://github.com/Haivision/srt/archive/refs/tags/v$LIBSRT_VERSION.tar.gz srt-$LIBSRT_VERSION.tar.gz
 download https://github.com/FFmpeg/nv-codec-headers/archive/n$NVCODEC_VERSION.tar.gz nv-codec-headers-$NVCODEC_VERSION.tar.gz
 download http://ffmpeg.org/releases/ffmpeg-$FFMPEG_VERSION.tar.bz2 ffmpeg-$FFMPEG_VERSION.tar.bz2
+
+if [[ "$EXTENSION" == *hwaccel* ]]; then
+	download https://dri.freedesktop.org/libdrm/libdrm-$LIBDRM_VERSION.tar.xz libdrm-$LIBDRM_VERSION.tar.xz
+	download https://xorg.freedesktop.org/archive/individual/lib/libpciaccess-$LIBPCIACCESS_VERSION.tar.gz libpciaccess-$LIBPCIACCESS_VERSION.tar.gz
+	download https://xorg.freedesktop.org/archive/individual/util/util-macros-$XUTIL_MACROS_VERSION.tar.bz2 util-macros-$XUTIL_MACROS_VERSION.tar.bz2
+	download https://www.freedesktop.org/software/vaapi/releases/libva/libva-$LIBVA_VERSION.tar.bz2 libva-$LIBVA_VERSION.tar.bz2
+	download https://www.freedesktop.org/software/vaapi/releases/libva-intel-driver/intel-vaapi-driver-$LIBVA_INTEL_DRIVER_VERSION.tar.bz2 intel-vaapi-driver-$LIBVA_INTEL_DRIVER_VERSION
+fi
 
 mkdir -p $PLATFORM$EXTENSION
 cd $PLATFORM$EXTENSION
@@ -83,6 +114,14 @@ tar --totals -xzf ../mfx_dispatch-$MFX_VERSION.tar.gz
 tar --totals -xzf ../nv-codec-headers-$NVCODEC_VERSION.tar.gz
 tar --totals -xzf ../$XML2.tar.gz
 tar --totals -xjf ../ffmpeg-$FFMPEG_VERSION.tar.bz2
+
+if [[ "$EXTENSION" == *hwaccel* ]]; then
+	tar --totals -xJf ../libdrm-$LIBDRM_VERSION.tar.xz
+	tar --totals -xzf ../libpciaccess-$LIBPCIACCESS_VERSION.tar.gz
+	tar --totals -xjf ../util-macros-$XUTIL_MACROS_VERSION.tar.bz2
+	tar --totals -xjf ../libva-$LIBVA_VERSION.tar.bz2
+	tar --totals -xjf ../intel-vaapi-driver-$LIBVA_INTEL_DRIVER_VERSION
+fi
 
 if [[ "${ACLOCAL_PATH:-}" == C:\\msys64\\* ]]; then
     export ACLOCAL_PATH=/mingw64/share/aclocal:/usr/share/aclocal
@@ -738,6 +777,54 @@ EOF
         CC="gcc -m64 -fPIC" ./configure --prefix=$INSTALL_PATH --static
         make -j $MAKEJ V=0
         make install
+
+		if [[ "$EXTENSION" == *hwaccel* ]]; then
+			echo ""
+			echo "--------------------"
+			echo "Building xutil-macros"
+			echo "--------------------"
+			echo ""
+			cd ../$XUTIL_MACROS
+			PKG_CONFIG_PATH="../lib/pkgconfig" CC="gcc -m64 -fPIC" ./configure --prefix=$INSTALL_PATH --host=x86_64-linux CFLAGS="-m64"
+			make --trace -j $MAKEJ V=0
+			make --trace install
+			echo ""
+			echo "--------------------"
+			echo "Building pciaccess"
+			echo "--------------------"
+			echo ""
+			cd ../$LIBPCIACCESS
+			PKG_CONFIG_PATH="../lib/pkgconfig:../share/pkgconfig" CC="gcc -m64 -fPIC" ./configure --prefix=$INSTALL_PATH --host=x86_64-linux CFLAGS="-m64"
+			make -j $MAKEJ V=0
+			make install
+			echo ""
+			echo "--------------------"
+			echo "Building drm"
+			echo "--------------------"
+			echo ""
+			cd ../$LIBDRM
+			PKG_CONFIG_PATH="../lib/pkgconfig" CC="gcc -m64 -fPIC" meson --prefix=$INSTALL_PATH --buildtype=release -Dudev=true -Dvalgrind=false build/
+			ninja -C build/ install
+			echo ""
+			echo "--------------------"
+			echo "Building libva"
+			echo "--------------------"
+			echo ""
+			cd ../$LIBVA
+			PKG_CONFIG_PATH="../lib/pkgconfig:../share/pkgconfig" CC="gcc -m64 -fPIC" ./configure --prefix=$INSTALL_PATH --host=x86_64-linux CFLAGS="-m64 -O2" CXXFLAGS=' -O2'
+			make -j $MAKEJ V=0
+			make install
+			echo ""
+			echo "--------------------"
+			echo "Building libva-intel-driver"
+			echo "--------------------"
+			echo ""
+			cd ../$LIBVA_INTEL_DRIVER
+			PKG_CONFIG_PATH="../lib/pkgconfig:../share/pkgconfig" CC="gcc -m64 -fPIC" ./configure --prefix=$INSTALL_PATH --host=x86_64-linux CFLAGS="-m64 -O2" CXXFLAGS=' -O2'
+			make -j $MAKEJ V=0
+			make install
+		fi
+
         echo ""
         echo "--------------------"
         echo "Building LAME"
@@ -831,10 +918,14 @@ EOF
         make -j $MAKEJ
         make install
         LIBS=
-        if [[ ! -z $(ldconfig -p | grep libva-drm) ]]; then
+		rm -Rf "$INSTALL_PATH/etc"
+		mkdir -p "$INSTALL_PATH/etc"
+		echo $(realpath "$INSTALL_PATH/lib") > "$INSTALL_PATH/etc/ld.so.conf"
+		ldconfig -r "$INSTALL_PATH"
+        if [[ ! -z $(ldconfig -p -r "$INSTALL_PATH" | grep libva-drm) ]]; then
             cd ../mfx_dispatch-$MFX_VERSION
             autoreconf -fiv
-            PKG_CONFIG_PATH="../lib/pkgconfig" ./configure --prefix=$INSTALL_PATH --disable-shared --enable-static --enable-fast-install --with-pic --host=x86_64-linux CFLAGS="-m64" CXXFLAGS="-m64"
+            PKG_CONFIG_PATH="../lib/pkgconfig:../lib/x86_64-linux-gnu/pkgconfig" ./configure --prefix=$INSTALL_PATH --disable-shared --enable-static --enable-fast-install --with-pic --host=x86_64-linux CFLAGS="-m64" CXXFLAGS="-m64"
             make -j $MAKEJ
             make install
             ENABLE="$ENABLE --enable-libmfx"
@@ -843,7 +934,7 @@ EOF
         cd ../nv-codec-headers-n$NVCODEC_VERSION
         make install PREFIX=$INSTALL_PATH
         cd ../ffmpeg-$FFMPEG_VERSION
-        LDEXEFLAGS='-Wl,-rpath,\$$ORIGIN/' PKG_CONFIG_PATH=../lib/pkgconfig/ ./configure --prefix=.. $DISABLE $ENABLE --enable-cuda --enable-cuvid --enable-nvenc --enable-pthreads --enable-libxcb --cc="gcc -m64" --extra-cflags="-I../include/ -I../include/libxml2" --extra-ldflags="-L../lib/" --extra-libs="-lstdc++ -lpthread -ldl -lz -lm $LIBS"
+        LDEXEFLAGS='-Wl,-rpath,\$$ORIGIN/' PKG_CONFIG_PATH='../lib/pkgconfig:../lib/x86_64-linux-gnu/pkgconfig' ./configure --prefix=.. $DISABLE $ENABLE --enable-cuda --enable-cuvid --enable-nvenc --enable-pthreads --enable-libxcb --cc="gcc -m64" --extra-cflags="-I../include/ -I../include/libxml2" --extra-ldflags="-L../lib/" --extra-libs="-lstdc++ -lpthread -ldl -lz -lm $LIBS"
         make -j $MAKEJ
         make install
         ;;
@@ -1307,7 +1398,7 @@ EOF
           CC="powerpc64le-linux-gnu-gcc" CXX="powerpc64le-linux-gnu-g++" ./configure --prefix=$INSTALL_PATH --with-bzip2=no --with-harfbuzz=no --with-png=no --with-brotli=no --enable-static --disable-shared --with-pic --host=powerpc64le-linux-gnu --build=ppc64le-linux CFLAGS="-m64"
         fi
         make -j $MAKEJ
-        make install 
+        make install
         cd ../ffmpeg-$FFMPEG_VERSION
         if [[ "$MACHINE_TYPE" =~ ppc64 ]]; then
           LDEXEFLAGS='-Wl,-rpath,\$$ORIGIN/' PKG_CONFIG_PATH=../lib/pkgconfig/ ./configure --prefix=.. $DISABLE $ENABLE --enable-pthreads --enable-libxcb --cc="gcc -m64" --extra-cflags="-I../include/ -I../include/libxml2" --extra-ldflags="-L../lib/" --extra-libs="-lstdc++ -ldl -lz -lm" --disable-altivec
