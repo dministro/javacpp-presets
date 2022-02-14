@@ -59,10 +59,8 @@ LIBPCIACCESS_VERSION=0.16
 LIBPCIACCESS=libpciaccess-$LIBPCIACCESS_VERSION
 XUTIL_MACROS_VERSION=1.19.3
 XUTIL_MACROS=util-macros-$XUTIL_MACROS_VERSION
-LIBVA_VERSION=1.8.1
+LIBVA_VERSION=2.6.1
 LIBVA=libva-$LIBVA_VERSION
-LIBVA_INTEL_DRIVER_VERSION=$LIBVA_VERSION
-LIBVA_INTEL_DRIVER=intel-vaapi-driver-$LIBVA_INTEL_DRIVER_VERSION
 
 download https://download.videolan.org/contrib/nasm/nasm-$NASM_VERSION.tar.gz nasm-$NASM_VERSION.tar.gz
 download http://zlib.net/$ZLIB.tar.gz $ZLIB.tar.gz
@@ -88,8 +86,7 @@ if [[ "$EXTENSION" == *hwaccel* ]]; then
 	download https://dri.freedesktop.org/libdrm/libdrm-$LIBDRM_VERSION.tar.xz libdrm-$LIBDRM_VERSION.tar.xz
 	download https://xorg.freedesktop.org/archive/individual/lib/libpciaccess-$LIBPCIACCESS_VERSION.tar.gz libpciaccess-$LIBPCIACCESS_VERSION.tar.gz
 	download https://xorg.freedesktop.org/archive/individual/util/util-macros-$XUTIL_MACROS_VERSION.tar.bz2 util-macros-$XUTIL_MACROS_VERSION.tar.bz2
-	download https://www.freedesktop.org/software/vaapi/releases/libva/libva-$LIBVA_VERSION.tar.bz2 libva-$LIBVA_VERSION.tar.bz2
-	download https://www.freedesktop.org/software/vaapi/releases/libva-intel-driver/intel-vaapi-driver-$LIBVA_INTEL_DRIVER_VERSION.tar.bz2 intel-vaapi-driver-$LIBVA_INTEL_DRIVER_VERSION
+	download https://github.com/intel/libva/releases/download/$LIBVA_VERSION/libva-$LIBVA_VERSION.tar.bz2 libva-$LIBVA_VERSION.tar.bz2
 fi
 
 mkdir -p $PLATFORM$EXTENSION
@@ -120,7 +117,6 @@ if [[ "$EXTENSION" == *hwaccel* ]]; then
 	tar --totals -xzf ../libpciaccess-$LIBPCIACCESS_VERSION.tar.gz
 	tar --totals -xjf ../util-macros-$XUTIL_MACROS_VERSION.tar.bz2
 	tar --totals -xjf ../libva-$LIBVA_VERSION.tar.bz2
-	tar --totals -xjf ../intel-vaapi-driver-$LIBVA_INTEL_DRIVER_VERSION
 fi
 
 if [[ "${ACLOCAL_PATH:-}" == C:\\msys64\\* ]]; then
@@ -786,8 +782,8 @@ EOF
 			echo ""
 			cd ../$XUTIL_MACROS
 			PKG_CONFIG_PATH="../lib/pkgconfig" CC="gcc -m64 -fPIC" ./configure --prefix=$INSTALL_PATH --host=x86_64-linux CFLAGS="-m64"
-			make --trace -j $MAKEJ V=0
-			make --trace install
+			make -j $MAKEJ V=0
+			make install
 			echo ""
 			echo "--------------------"
 			echo "Building pciaccess"
@@ -811,15 +807,6 @@ EOF
 			echo "--------------------"
 			echo ""
 			cd ../$LIBVA
-			PKG_CONFIG_PATH="../lib/pkgconfig:../share/pkgconfig" CC="gcc -m64 -fPIC" ./configure --prefix=$INSTALL_PATH --host=x86_64-linux CFLAGS="-m64 -O2" CXXFLAGS=' -O2'
-			make -j $MAKEJ V=0
-			make install
-			echo ""
-			echo "--------------------"
-			echo "Building libva-intel-driver"
-			echo "--------------------"
-			echo ""
-			cd ../$LIBVA_INTEL_DRIVER
 			PKG_CONFIG_PATH="../lib/pkgconfig:../share/pkgconfig" CC="gcc -m64 -fPIC" ./configure --prefix=$INSTALL_PATH --host=x86_64-linux CFLAGS="-m64 -O2" CXXFLAGS=' -O2'
 			make -j $MAKEJ V=0
 			make install

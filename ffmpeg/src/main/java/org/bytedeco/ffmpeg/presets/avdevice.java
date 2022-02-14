@@ -38,7 +38,8 @@ import org.bytedeco.javacpp.tools.InfoMapper;
     global = "org.bytedeco.ffmpeg.global.avdevice",
     value = {
         @Platform(cinclude = "<libavdevice/avdevice.h>", link = "avdevice@.58"),
-        @Platform(value = "windows", preload = "avdevice-58")
+        @Platform(value = "windows", preload = "avdevice-58"),
+		@Platform(extension = { "-gplhwaccel", "-hwaccel" })
     }
 )
 public class avdevice implements InfoMapper {
