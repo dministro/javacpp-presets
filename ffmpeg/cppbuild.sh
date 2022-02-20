@@ -799,7 +799,7 @@ EOF
 			echo "--------------------"
 			echo ""
 			cd ../$LIBDRM
-			PKG_CONFIG_PATH="../lib/pkgconfig" CC="gcc -m64 -fPIC" meson --prefix=$INSTALL_PATH --buildtype=release -Dudev=true -Dvalgrind=false build/
+			PKG_CONFIG_PATH="../lib/pkgconfig:../lib64/pkgconfig" CC="gcc -m64 -fPIC" meson --prefix=$INSTALL_PATH --buildtype=release -Dudev=true -Dvalgrind=false build/
 			ninja -C build/ install
 			echo ""
 			echo "--------------------"
@@ -807,7 +807,7 @@ EOF
 			echo "--------------------"
 			echo ""
 			cd ../$LIBVA
-			PKG_CONFIG_PATH="../lib/pkgconfig:../share/pkgconfig" CC="gcc -m64 -fPIC" ./configure --prefix=$INSTALL_PATH --host=x86_64-linux CFLAGS="-m64 -O2" CXXFLAGS=' -O2'
+			PKG_CONFIG_PATH="../lib/pkgconfig:../share/pkgconfig:../lib64/pkgconfig" CC="gcc -m64 -fPIC" ./configure --prefix=$INSTALL_PATH --host=x86_64-linux CFLAGS="-m64 -O2" CXXFLAGS=' -O2'
 			make -j $MAKEJ V=0
 			make install
 		fi
@@ -912,16 +912,17 @@ EOF
         if [[ ! -z $(ldconfig -p -r "$INSTALL_PATH" | grep libva-drm) ]]; then
             cd ../mfx_dispatch-$MFX_VERSION
             autoreconf -fiv
-            PKG_CONFIG_PATH="../lib/pkgconfig:../lib/x86_64-linux-gnu/pkgconfig" ./configure --prefix=$INSTALL_PATH --disable-shared --enable-static --enable-fast-install --with-pic --host=x86_64-linux CFLAGS="-m64" CXXFLAGS="-m64"
+            PKG_CONFIG_PATH="$INSTALL_PATH/lib/pkgconfig:$INSTALL_PATH/lib/x86_64-linux-gnu/pkgconfig" ./configure --prefix=$INSTALL_PATH --disable-shared --enable-static --enable-fast-install --with-pic --host=x86_64-linux CFLAGS="-m64" CXXFLAGS="-m64"
             make -j $MAKEJ
             make install
             ENABLE="$ENABLE --enable-libmfx"
-            LIBS="-lva-drm -lva-x11 -lva"
+            #LIBS="-lva-drm -lva-x11 -lva"
+            LIBS="-lva-drm -lva"
         fi
         cd ../nv-codec-headers-n$NVCODEC_VERSION
         make install PREFIX=$INSTALL_PATH
         cd ../ffmpeg-$FFMPEG_VERSION
-        LDEXEFLAGS='-Wl,-rpath,\$$ORIGIN/' PKG_CONFIG_PATH='../lib/pkgconfig:../lib/x86_64-linux-gnu/pkgconfig' ./configure --prefix=.. $DISABLE $ENABLE --enable-cuda --enable-cuvid --enable-nvenc --enable-pthreads --enable-libxcb --cc="gcc -m64" --extra-cflags="-I../include/ -I../include/libxml2" --extra-ldflags="-L../lib/" --extra-libs="-lstdc++ -lpthread -ldl -lz -lm $LIBS"
+        LDEXEFLAGS='-Wl,-rpath,\$$ORIGIN/' PKG_CONFIG_PATH="$INSTALL_PATH/lib/pkgconfig:$INSTALL_PATH/lib64/pkgconfig:$INSTALL_PATH/lib/x86_64-linux-gnu/pkgconfig" ./configure --prefix=$INSTALL_PATH $DISABLE $ENABLE --disable-xlib --enable-cuda --enable-cuvid --enable-nvenc --enable-pthreads --cc="gcc -m64" --extra-cflags="-I$INSTALL_PATH/include/ -I$INSTALL_PATH/include/libxml2" --extra-ldflags="-L$INSTALL_PATH/lib/ -L$INSTALL_PATH/lib64/" --extra-libs="-lstdc++ -lpthread -ldl -lz -lm $LIBS"
         make -j $MAKEJ
         make install
         ;;
